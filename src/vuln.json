@@ -1,0 +1,3698 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "SnykCode",
+          "semanticVersion": "1.0.0",
+          "version": "1.0.0",
+          "rules": [
+            {
+              "id": "python/reDOS",
+              "name": "reDOS",
+              "shortDescription": {
+                "text": "Regular Expression Denial of Service (ReDoS)"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "markdown": "## Details\n\nDenial of Service (DoS) describes a family of attacks, all aimed at making a system inaccessible to its original and legitimate users. There are many types of DoS attacks, ranging from trying to clog the network pipes to the system by generating a large volume of traffic from many machines (a Distributed Denial of Service - DDoS - attack) to sending crafted requests that cause a system to crash or take a disproportional amount of time to process.\n\nThe Regular expression Denial of Service (ReDoS) is a type of Denial of Service attack. Regular expressions are incredibly powerful, but they aren't very intuitive and can ultimately end up making it easy for attackers to take your site down.\n\nLet's take the following regular expression as an example:\n```js\nregex = /A(B|C+)+D/\n```\n\nThis regular expression accomplishes the following:\n- `A` The string must start with the letter 'A'\n- `(B|C+)+` The string must then follow the letter A with either the letter 'B' or some number of occurrences of the letter 'C' (the `+` matches one or more times). The `+` at the end of this section states that we can look for one or more matches of this section.\n- `D` Finally, we ensure this section of the string ends with a 'D'\n\nThe expression would match inputs such as `ABBD`, `ABCCCCD`, `ABCBCCCD` and `ACCCCCD`\n\nIt most cases, it doesn't take very long for a regex engine to find a match:\n\n```bash\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCD\")'\n0.04s user 0.01s system 95% cpu 0.052 total\n\n$ time node -e '/A(B|C+)+D/.test(\"ACCCCCCCCCCCCCCCCCCCCCCCCCCCCX\")'\n1.79s user 0.02s system 99% cpu 1.812 total\n```\n\nThe entire process of testing it against a 30 characters long string takes around ~52ms. But when given an invalid string, it takes nearly two seconds to complete the test, over ten times as long as it took to test a valid string. The dramatic difference is due to the way regular expressions get evaluated.\n\nMost Regex engines will work very similarly (with minor differences). The engine will match the first possible way to accept the current character and proceed to the next one. If it then fails to match the next one, it will backtrack and see if there was another way to digest the previous character. If it goes too far down the rabbit hole only to find out the string doesn't match in the end, and if many characters have multiple valid regex paths, the number of backtracking steps can become very large, resulting in what is known as _catastrophic backtracking_.\n\nLet's look at how our expression runs into this problem, using a shorter string: \"ACCCX\". While it seems fairly straightforward, there are still four different ways that the engine could match those three C's:\n1. CCC\n2. CC+C\n3. C+CC\n4. C+C+C.\n\nThe engine has to try each of those combinations to see if any of them potentially match against the expression. When you combine that with the other steps the engine must take, we can use [RegEx 101 debugger](https://regex101.com/debugger) to see the engine has to take a total of 38 steps before it can determine the string doesn't match.\n\nFrom there, the number of steps the engine must use to validate a string just continues to grow.\n\n| String | Number of C's | Number of steps |\n| -------|-------------:| -----:|\n| ACCCX | 3 | 38\n| ACCCCX | 4 | 71\n| ACCCCCX | 5 | 136\n| ACCCCCCCCCCCCCCX | 14 | 65,553\n\n\nBy the time the string includes 14 C's, the engine has to take over 65,000 steps just to see if the string is valid. These extreme situations can cause them to work very slowly (exponentially related to input size, as shown above), allowing an attacker to exploit this and can cause the service to excessively consume CPU, resulting in a Denial of Service.",
+                "text": ""
+              },
+              "properties": {
+                "tags": [
+                  "python",
+                  "reDOS",
+                  "Security",
+                  "SourceLocalEnv",
+                  "SourceCLI",
+                  "Taint"
+                ],
+                "categories": [
+                  "Security"
+                ],
+                "exampleCommitFixes": [
+                  {
+                    "commitURL": "https://github.com/apache/allura/commit/ce23a31516818ba803fd801504fe6f9566e3cbab?diff=split#diff-a01e9f95ec248a880acfe90cbc6c0117L326",
+                    "lines": [
+                      {
+                        "line": "        redirect(g.forge_static('images/user.png'))",
+                        "lineNumber": 323,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "@expose('json:')",
+                        "lineNumber": 325,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def user_search(self,term=''):",
+                        "lineNumber": 326,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    name_regex = re.compile('(?i)%s' % term)",
+                        "lineNumber": 327,
+                        "lineChange": "removed"
+                      },
+                      {
+                        "line": "    name_regex = re.compile('(?i)%s' % re.escape(term))",
+                        "lineNumber": 327,
+                        "lineChange": "added"
+                      },
+                      {
+                        "line": "    users = M.User.query.find({",
+                        "lineNumber": 328,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                '_id':{'$in':[role.user_id for role in c.project.roles]},",
+                        "lineNumber": 329,
+                        "lineChange": "none"
+                      }
+                    ]
+                  },
+                  {
+                    "commitURL": "https://github.com/tomashanacek/mock-server/commit/6d9d908f23940b69dfe8a375b57db98182a4e2d3?diff=split#diff-137164440312cbcacfcd58d690995780L655",
+                    "lines": [
+                      {
+                        "line": "class TodoHandler(BaseHandler):",
+                        "lineNumber": 654,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    @tornado.web.authenticated",
+                        "lineNumber": 656,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    def post(self):",
+                        "lineNumber": 657,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # check xsrf cookie",
+                        "lineNumber": 658,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.check_xsrf_cookie()",
+                        "lineNumber": 659,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # get data from request body",
+                        "lineNumber": 661,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        data = tornado.escape.json_decode(self.request.body)",
+                        "lineNumber": 662,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if data[\"protocol\"] == \"rest\":",
+                        "lineNumber": 664,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            method, url_path = data[\"id\"].split(\"-\")",
+                        "lineNumber": 665,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            method_file = ResourceMethod(self.api_dir, url_path, method)",
+                        "lineNumber": 666,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        elif data[\"protocol\"] == \"rpc\":",
+                        "lineNumber": 667,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            method_file = RPCMethod(",
+                        "lineNumber": 668,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                os.path.join(self.api_dir, RPCHandler.PATH), data[\"id\"])",
+                        "lineNumber": 669,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # load description",
+                        "lineNumber": 671,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# set todo",
+                        "lineNumber": 674,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "value = \" %s\" % data[\"value\"].strip()",
+                        "lineNumber": 675,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "todo = \"%s%s\" % (\"[x]\" if data[\"checked\"] else \"[ ]\", value)",
+                        "lineNumber": 676,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "method_file.description = re.sub(",
+                        "lineNumber": 677,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    r\"\\[( |x)\\]%s\" % value, todo, method_file.description)",
+                        "lineNumber": 678,
+                        "lineChange": "removed"
+                      },
+                      {
+                        "line": "    r\"\\[( |x)\\]%s\" % re.escape(value), todo, method_file.description)",
+                        "lineNumber": 678,
+                        "lineChange": "added"
+                      },
+                      {
+                        "line": "# save description",
+                        "lineNumber": 680,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "method_file.save_description()",
+                        "lineNumber": 681,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "self.set_header(\"Content-Type\", \"application/json\")",
+                        "lineNumber": 683,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "self.write(\"OK\")",
+                        "lineNumber": 684,
+                        "lineChange": "none"
+                      }
+                    ]
+                  },
+                  {
+                    "commitURL": "https://github.com/django/django/commit/3ed55606c4351913584a79e8b967f99b40316f1d?diff=split#diff-3c42de3e53aba87b32c494f995a728dfL61",
+                    "lines": [
+                      {
+                        "line": "def get_content_type_for_model(obj):",
+                        "lineNumber": 60,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # Since this module gets imported in the application's root package,",
+                        "lineNumber": 61,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # it cannot import models from other applications at the module level.",
+                        "lineNumber": 62,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    from django.contrib.contenttypes.models import ContentType",
+                        "lineNumber": 63,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return ContentType.objects.get_for_model(obj, for_concrete_model=False)",
+                        "lineNumber": 64,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def __str__(self):",
+                        "lineNumber": 584,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return \"%s.%s\" % (self.model._meta.app_label, self.__class__.__name__)",
+                        "lineNumber": 585,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_inline_instances(self, request, obj=None):",
+                        "lineNumber": 587,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    inline_instances = []",
+                        "lineNumber": 588,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    for inline_class in self.get_inlines(request, obj):",
+                        "lineNumber": 589,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        inline = inline_class(self.model, self.admin_site)",
+                        "lineNumber": 590,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if request:",
+                        "lineNumber": 591,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            if not (inline.has_view_or_change_permission(request, obj) or",
+                        "lineNumber": 592,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return update_wrapper(wrapper, view)",
+                        "lineNumber": 609,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "info = self.model._meta.app_label, self.model._meta.model_name",
+                        "lineNumber": 611,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return [",
+                        "lineNumber": 613,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self.get_form(request, obj, fields=None)",
+                        "lineNumber": 659,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_form(self, request, obj=None, change=False, **kwargs):",
+                        "lineNumber": 661,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 662,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Return a Form class for use in the admin add view. This is used by",
+                        "lineNumber": 663,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    fields = kwargs.pop('fields')",
+                        "lineNumber": 667,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 668,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    fields = flatten_fieldsets(self.get_fieldsets(request, obj))",
+                        "lineNumber": 669,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "excluded = self.get_exclude(request, obj)",
+                        "lineNumber": 670,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "exclude = [] if excluded is None else list(excluded)",
+                        "lineNumber": 671,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "readonly_fields = self.get_readonly_fields(request, obj)",
+                        "lineNumber": 672,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "exclude.extend(readonly_fields)",
+                        "lineNumber": 673,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Exclude all fields if it's a change form and the user doesn't have",
+                        "lineNumber": 674,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# the change permission.",
+                        "lineNumber": 675,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if change and hasattr(request, 'user') and not self.has_change_permission(request, obj):",
+                        "lineNumber": 676,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    exclude.extend(fields)",
+                        "lineNumber": 677,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if excluded is None and hasattr(self.form, '_meta') and self.form._meta.exclude:",
+                        "lineNumber": 678,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "try:",
+                        "lineNumber": 701,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return modelform_factory(self.model, **defaults)",
+                        "lineNumber": 702,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "except FieldError as e:",
+                        "lineNumber": 703,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    raise FieldError(",
+                        "lineNumber": 704,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return ChangeList(",
+                        "lineNumber": 728,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    request,",
+                        "lineNumber": 729,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.model,",
+                        "lineNumber": 730,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    list_display,",
+                        "lineNumber": 731,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    list_display_links,",
+                        "lineNumber": 732,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 742,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_object(self, request, object_id, from_field=None):",
+                        "lineNumber": 744,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 745,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Return an instance matching the field and value provided, the primary",
+                        "lineNumber": 746,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "queryset = self.get_queryset(request)",
+                        "lineNumber": 750,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "model = queryset.model",
+                        "lineNumber": 751,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "field = model._meta.pk if from_field is None else model._meta.get_field(from_field)",
+                        "lineNumber": 752,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "try:",
+                        "lineNumber": 753,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_id = field.to_python(object_id)",
+                        "lineNumber": 754,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return queryset.get(**{field.name: object_id})",
+                        "lineNumber": 755,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "except (model.DoesNotExist, ValidationError, ValueError):",
+                        "lineNumber": 756,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return None",
+                        "lineNumber": 757,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        defaults['fields'] = forms.ALL_FIELDS",
+                        "lineNumber": 768,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return modelform_factory(self.model, **defaults)",
+                        "lineNumber": 770,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_changelist_formset(self, request, **kwargs):",
+                        "lineNumber": 772,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    **kwargs,",
+                        "lineNumber": 779,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "}",
+                        "lineNumber": 780,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return modelformset_factory(",
+                        "lineNumber": 781,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.model, self.get_changelist_form(request), extra=0,",
+                        "lineNumber": 782,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    fields=self.list_editable, **defaults",
+                        "lineNumber": 783,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": ")",
+                        "lineNumber": 784,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self.paginator(queryset, per_page, orphans, allow_empty_first_page)",
+                        "lineNumber": 794,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def log_addition(self, request, object, message):",
+                        "lineNumber": 796,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 797,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Log that an object has been successfully added.",
+                        "lineNumber": 798,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return LogEntry.objects.log_action(",
+                        "lineNumber": 803,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        user_id=request.user.pk,",
+                        "lineNumber": 804,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        content_type_id=get_content_type_for_model(object).pk,",
+                        "lineNumber": 805,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        object_id=object.pk,",
+                        "lineNumber": 806,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        object_repr=str(object),",
+                        "lineNumber": 807,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        action_flag=ADDITION,",
+                        "lineNumber": 808,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        change_message=message,",
+                        "lineNumber": 809,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 810,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def log_change(self, request, object, message):",
+                        "lineNumber": 812,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 813,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Log that an object has been successfully changed.",
+                        "lineNumber": 814,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return LogEntry.objects.log_action(",
+                        "lineNumber": 819,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        user_id=request.user.pk,",
+                        "lineNumber": 820,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        content_type_id=get_content_type_for_model(object).pk,",
+                        "lineNumber": 821,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        object_id=object.pk,",
+                        "lineNumber": 822,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        object_repr=str(object),",
+                        "lineNumber": 823,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        action_flag=CHANGE,",
+                        "lineNumber": 824,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        change_message=message,",
+                        "lineNumber": 825,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 826,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def log_deletion(self, request, object, object_repr):",
+                        "lineNumber": 828,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 829,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Log that an object will be deleted. Note that this method must be",
+                        "lineNumber": 830,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return LogEntry.objects.log_action(",
+                        "lineNumber": 836,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    user_id=request.user.pk,",
+                        "lineNumber": 837,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    content_type_id=get_content_type_for_model(object).pk,",
+                        "lineNumber": 838,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_id=object.pk,",
+                        "lineNumber": 839,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_repr=object_repr,",
+                        "lineNumber": 840,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# If self.actions is set to None that means actions are disabled on",
+                        "lineNumber": 885,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# this page.",
+                        "lineNumber": 886,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if self.actions is None or IS_POPUP_VAR in request.GET:",
+                        "lineNumber": 887,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return {}",
+                        "lineNumber": 888,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "actions = self._filter_actions_by_permissions(request, self._get_base_actions())",
+                        "lineNumber": 889,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "choices = [] + default_choices",
+                        "lineNumber": 897,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "for func, name, description in self.get_actions(request).values():",
+                        "lineNumber": 898,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    choice = (name, description % model_format_dict(self.opts))",
+                        "lineNumber": 899,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    choices.append(choice)",
+                        "lineNumber": 900,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return choices",
+                        "lineNumber": 901,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                      for orm_lookup in orm_lookups]",
+                        "lineNumber": 1015,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        queryset = queryset.filter(reduce(operator.or_, or_queries))",
+                        "lineNumber": 1016,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    use_distinct |= any(lookup_needs_distinct(self.opts, search_spec) for search_spec in orm_lookups)",
+                        "lineNumber": 1017,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return queryset, use_distinct",
+                        "lineNumber": 1019,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "Return the preserved filters querystring.",
+                        "lineNumber": 1023,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "\"\"\"",
+                        "lineNumber": 1024,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "match = request.resolver_match",
+                        "lineNumber": 1025,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if self.preserve_filters and match:",
+                        "lineNumber": 1026,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1027,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    current_url = '%s:%s' % (match.app_name, match.url_name)",
+                        "lineNumber": 1028,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    changelist_url = 'admin:%s_%s_changelist' % (opts.app_label, opts.model_name)",
+                        "lineNumber": 1029,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if current_url == changelist_url:",
+                        "lineNumber": 1030,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        preserved_filters = request.GET.urlencode()",
+                        "lineNumber": 1031,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1032,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        preserved_filters = request.GET.get('_changelist_filters')",
+                        "lineNumber": 1033,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if preserved_filters:",
+                        "lineNumber": 1035,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    messages.add_message(request, level, message, extra_tags=extra_tags, fail_silently=fail_silently)",
+                        "lineNumber": 1068,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def save_form(self, request, form, change):",
+                        "lineNumber": 1070,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1071,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Given a ModelForm return an unsaved instance. ``change`` is True if",
+                        "lineNumber": 1072,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    the object is being changed, and False if it's being added.",
+                        "lineNumber": 1073,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1074,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return form.save(commit=False)",
+                        "lineNumber": 1075,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def save_model(self, request, obj, form, change):",
+                        "lineNumber": 1077,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1078,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Given a model instance save it to the database.",
+                        "lineNumber": 1079,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1080,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    obj.save()",
+                        "lineNumber": 1081,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def delete_model(self, request, obj):",
+                        "lineNumber": 1083,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.save_formset(request, form, formset, change=change)",
+                        "lineNumber": 1109,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):",
+                        "lineNumber": 1111,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1112,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    app_label = opts.app_label",
+                        "lineNumber": 1113,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    preserved_filters = self.get_preserved_filters(request)",
+                        "lineNumber": 1114,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    form_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, form_url)",
+                        "lineNumber": 1115,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    view_on_site_url = self.get_view_on_site_url(obj)",
+                        "lineNumber": 1116,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    has_editable_inline_admin_formsets = False",
+                        "lineNumber": 1117,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    for inline in context['inline_admin_formsets']:",
+                        "lineNumber": 1118,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'add': add,",
+                        "lineNumber": 1123,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'change': change,",
+                        "lineNumber": 1124,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_view_permission': self.has_view_permission(request, obj),",
+                        "lineNumber": 1125,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_add_permission': self.has_add_permission(request),",
+                        "lineNumber": 1126,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_change_permission': self.has_change_permission(request, obj),",
+                        "lineNumber": 1127,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_delete_permission': self.has_delete_permission(request, obj),",
+                        "lineNumber": 1128,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_editable_inline_admin_formsets': has_editable_inline_admin_formsets,",
+                        "lineNumber": 1129,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'has_file_field': context['adminform'].form.is_multipart() or any(",
+                        "lineNumber": 1130,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'absolute_url': view_on_site_url,",
+                        "lineNumber": 1135,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'form_url': form_url,",
+                        "lineNumber": 1136,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'opts': opts,",
+                        "lineNumber": 1137,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'content_type_id': get_content_type_for_model(self.model).pk,",
+                        "lineNumber": 1138,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'save_as': self.save_as,",
+                        "lineNumber": 1139,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'save_on_top': self.save_on_top,",
+                        "lineNumber": 1140,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return TemplateResponse(request, form_template or [",
+                        "lineNumber": 1152,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/%s/%s/change_form.html\" % (app_label, opts.model_name),",
+                        "lineNumber": 1153,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/%s/change_form.html\" % app_label,",
+                        "lineNumber": 1154,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/change_form.html\"",
+                        "lineNumber": 1155,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    ], context)",
+                        "lineNumber": 1156,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def response_add(self, request, obj, post_url_continue=None):",
+                        "lineNumber": 1158,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1159,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Determine the HttpResponse for the add_view stage.",
+                        "lineNumber": 1160,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1161,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = obj._meta",
+                        "lineNumber": 1162,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    preserved_filters = self.get_preserved_filters(request)",
+                        "lineNumber": 1163,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    obj_url = reverse(",
+                        "lineNumber": 1164,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'admin:%s_%s_change' % (opts.app_label, opts.model_name),",
+                        "lineNumber": 1165,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        args=(quote(obj.pk),),",
+                        "lineNumber": 1166,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        current_app=self.admin_site.name,",
+                        "lineNumber": 1167,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1168,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # Add a link to the object's change form if the user can edit the obj.",
+                        "lineNumber": 1169,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if self.has_change_permission(request, obj):",
+                        "lineNumber": 1170,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        obj_repr = format_html('<a href=\"{}\">{}</a>', urlquote(obj_url), obj)",
+                        "lineNumber": 1171,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1172,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        obj_repr = str(obj)",
+                        "lineNumber": 1173,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg_dict = {",
+                        "lineNumber": 1174,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'name': opts.verbose_name,",
+                        "lineNumber": 1175,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# the presence of keys in request.POST.",
+                        "lineNumber": 1179,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if IS_POPUP_VAR in request.POST:",
+                        "lineNumber": 1181,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    to_field = request.POST.get(TO_FIELD_VAR)",
+                        "lineNumber": 1182,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if to_field:",
+                        "lineNumber": 1183,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        attr = str(to_field)",
+                        "lineNumber": 1184,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1185,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        attr = obj._meta.pk.attname",
+                        "lineNumber": 1186,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    value = obj.serializable_value(attr)",
+                        "lineNumber": 1187,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    popup_response_data = json.dumps({",
+                        "lineNumber": 1188,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'value': str(value),",
+                        "lineNumber": 1189,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'obj': str(obj),",
+                        "lineNumber": 1190,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    })",
+                        "lineNumber": 1191,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return TemplateResponse(request, self.popup_response_template or [",
+                        "lineNumber": 1192,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    })",
+                        "lineNumber": 1198,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "elif \"_continue\" in request.POST or (",
+                        "lineNumber": 1200,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # Redirecting after \"Save as new\".",
+                        "lineNumber": 1201,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"_saveasnew\" in request.POST and self.save_as_continue and",
+                        "lineNumber": 1202,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.has_change_permission(request, obj)",
+                        "lineNumber": 1203,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "):",
+                        "lineNumber": 1204,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = _('The {name} “{obj}” was added successfully.')",
+                        "lineNumber": 1205,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if self.has_change_permission(request, obj):",
+                        "lineNumber": 1206,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        msg += ' ' + _('You may edit it again below.')",
+                        "lineNumber": 1207,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.message_user(request, format_html(msg, **msg_dict), messages.SUCCESS)",
+                        "lineNumber": 1208,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(post_url_continue)",
+                        "lineNumber": 1215,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "elif \"_addanother\" in request.POST:",
+                        "lineNumber": 1217,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = format_html(",
+                        "lineNumber": 1218,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        _('The {name} “{obj}” was added successfully. You may add another {name} below.'),",
+                        "lineNumber": 1219,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": ")",
+                        "lineNumber": 1221,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1222,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "redirect_url = request.path",
+                        "lineNumber": 1223,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "redirect_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)",
+                        "lineNumber": 1224,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return HttpResponseRedirect(redirect_url)",
+                        "lineNumber": 1225,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        )",
+                        "lineNumber": 1231,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1232,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self.response_post_save_add(request, obj)",
+                        "lineNumber": 1233,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def response_change(self, request, obj):",
+                        "lineNumber": 1235,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1236,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Determine the HttpResponse for the change_view stage.",
+                        "lineNumber": 1237,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1238,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if IS_POPUP_VAR in request.POST:",
+                        "lineNumber": 1240,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        opts = obj._meta",
+                        "lineNumber": 1241,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        to_field = request.POST.get(TO_FIELD_VAR)",
+                        "lineNumber": 1242,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        attr = str(to_field) if to_field else opts.pk.attname",
+                        "lineNumber": 1243,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        value = request.resolver_match.kwargs['object_id']",
+                        "lineNumber": 1244,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        new_value = obj.serializable_value(attr)",
+                        "lineNumber": 1245,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        popup_response_data = json.dumps({",
+                        "lineNumber": 1246,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            'action': 'change',",
+                        "lineNumber": 1247,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            'value': str(value),",
+                        "lineNumber": 1248,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            'obj': str(obj),",
+                        "lineNumber": 1249,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            'new_value': str(new_value),",
+                        "lineNumber": 1250,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        })",
+                        "lineNumber": 1251,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    })",
+                        "lineNumber": 1258,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "opts = self.model._meta",
+                        "lineNumber": 1260,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "preserved_filters = self.get_preserved_filters(request)",
+                        "lineNumber": 1261,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "msg_dict = {",
+                        "lineNumber": 1263,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'name': opts.verbose_name,",
+                        "lineNumber": 1264,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'obj': format_html('<a href=\"{}\">{}</a>', urlquote(request.path), obj),",
+                        "lineNumber": 1265,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "}",
+                        "lineNumber": 1266,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if \"_continue\" in request.POST:",
+                        "lineNumber": 1267,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = format_html(",
+                        "lineNumber": 1268,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        _('The {name} “{obj}” was changed successfully. You may edit it again below.'),",
+                        "lineNumber": 1269,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1271,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1272,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    redirect_url = request.path",
+                        "lineNumber": 1273,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    redirect_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)",
+                        "lineNumber": 1274,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(redirect_url)",
+                        "lineNumber": 1275,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "elif \"_saveasnew\" in request.POST:",
+                        "lineNumber": 1277,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = format_html(",
+                        "lineNumber": 1278,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        _('The {name} “{obj}” was added successfully. You may edit it again below.'),",
+                        "lineNumber": 1279,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1282,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    redirect_url = reverse('admin:%s_%s_change' %",
+                        "lineNumber": 1283,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                           (opts.app_label, opts.model_name),",
+                        "lineNumber": 1284,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                           args=(obj.pk,),",
+                        "lineNumber": 1285,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                           current_app=self.admin_site.name)",
+                        "lineNumber": 1286,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    redirect_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)",
+                        "lineNumber": 1287,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(redirect_url)",
+                        "lineNumber": 1288,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "elif \"_addanother\" in request.POST:",
+                        "lineNumber": 1290,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = format_html(",
+                        "lineNumber": 1291,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        _('The {name} “{obj}” was changed successfully. You may add another {name} below.'),",
+                        "lineNumber": 1292,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1295,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "redirect_url = reverse('admin:%s_%s_add' %",
+                        "lineNumber": 1296,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                       (opts.app_label, opts.model_name),",
+                        "lineNumber": 1297,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                       current_app=self.admin_site.name)",
+                        "lineNumber": 1298,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "redirect_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)",
+                        "lineNumber": 1299,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return HttpResponseRedirect(redirect_url)",
+                        "lineNumber": 1300,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        )",
+                        "lineNumber": 1306,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1307,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self.response_post_save_change(request, obj)",
+                        "lineNumber": 1308,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _response_post_save(self, request, obj):",
+                        "lineNumber": 1310,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1311,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if self.has_view_or_change_permission(request):",
+                        "lineNumber": 1312,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        post_url = reverse('admin:%s_%s_changelist' %",
+                        "lineNumber": 1313,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                           (opts.app_label, opts.model_name),",
+                        "lineNumber": 1314,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                           current_app=self.admin_site.name)",
+                        "lineNumber": 1315,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        preserved_filters = self.get_preserved_filters(request)",
+                        "lineNumber": 1316,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        post_url = add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, post_url)",
+                        "lineNumber": 1317,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1318,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        post_url = reverse('admin:index',",
+                        "lineNumber": 1319,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(post_url)",
+                        "lineNumber": 1321,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def response_post_save_add(self, request, obj):",
+                        "lineNumber": 1323,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1324,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Figure out where to redirect after the 'Save' button has been pressed",
+                        "lineNumber": 1325,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    when adding a new object.",
+                        "lineNumber": 1326,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1327,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self._response_post_save(request, obj)",
+                        "lineNumber": 1328,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def response_post_save_change(self, request, obj):",
+                        "lineNumber": 1330,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1331,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Figure out where to redirect after the 'Save' button has been pressed",
+                        "lineNumber": 1332,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    when editing an existing object.",
+                        "lineNumber": 1333,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1334,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self._response_post_save(request, obj)",
+                        "lineNumber": 1335,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def response_action(self, request, queryset):",
+                        "lineNumber": 1337,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# whose button was pushed.",
+                        "lineNumber": 1346,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "try:",
+                        "lineNumber": 1347,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    action_index = int(request.POST.get('index', 0))",
+                        "lineNumber": 1348,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "except ValueError:",
+                        "lineNumber": 1349,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    action_index = 0",
+                        "lineNumber": 1350,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Construct the action form.",
+                        "lineNumber": 1352,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "data = request.POST.copy()",
+                        "lineNumber": 1353,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "data.pop(helpers.ACTION_CHECKBOX_NAME, None)",
+                        "lineNumber": 1354,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "data.pop(\"index\", None)",
+                        "lineNumber": 1355,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# perform an action on it, so bail. Except we want to perform",
+                        "lineNumber": 1376,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# the action explicitly on all objects.",
+                        "lineNumber": 1377,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)",
+                        "lineNumber": 1378,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if not selected and not select_across:",
+                        "lineNumber": 1379,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # Reminder that something needs to be selected or nothing will happen",
+                        "lineNumber": 1380,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return response",
+                        "lineNumber": 1396,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1397,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return HttpResponseRedirect(request.get_full_path())",
+                        "lineNumber": 1398,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1399,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    msg = _(\"No action selected.\")",
+                        "lineNumber": 1400,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "Determine the HttpResponse for the delete_view stage.",
+                        "lineNumber": 1406,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "\"\"\"",
+                        "lineNumber": 1407,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "opts = self.model._meta",
+                        "lineNumber": 1408,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if IS_POPUP_VAR in request.POST:",
+                        "lineNumber": 1410,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    popup_response_data = json.dumps({",
+                        "lineNumber": 1411,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'action': 'delete',",
+                        "lineNumber": 1412,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "})",
+                        "lineNumber": 1414,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return TemplateResponse(request, self.popup_response_template or [",
+                        "lineNumber": 1415,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),",
+                        "lineNumber": 1416,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/%s/popup_response.html' % opts.app_label,",
+                        "lineNumber": 1417,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/popup_response.html',",
+                        "lineNumber": 1418,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "], {",
+                        "lineNumber": 1419,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "request,",
+                        "lineNumber": 1424,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "_('The %(name)s “%(obj)s” was deleted successfully.') % {",
+                        "lineNumber": 1425,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'name': opts.verbose_name,",
+                        "lineNumber": 1426,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'obj': obj_display,",
+                        "lineNumber": 1427,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "},",
+                        "lineNumber": 1428,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if self.has_change_permission(request, None):",
+                        "lineNumber": 1432,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    post_url = reverse(",
+                        "lineNumber": 1433,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'admin:%s_%s_changelist' % (opts.app_label, opts.model_name),",
+                        "lineNumber": 1434,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        current_app=self.admin_site.name,",
+                        "lineNumber": 1435,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1436,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    preserved_filters = self.get_preserved_filters(request)",
+                        "lineNumber": 1437,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    post_url = add_preserved_filters(",
+                        "lineNumber": 1438,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        {'preserved_filters': preserved_filters, 'opts': opts}, post_url",
+                        "lineNumber": 1439,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1440,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1441,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def render_delete_form(self, request, context):",
+                        "lineNumber": 1445,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1446,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    app_label = opts.app_label",
+                        "lineNumber": 1447,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    request.current_app = self.admin_site.name",
+                        "lineNumber": 1449,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "request,",
+                        "lineNumber": 1457,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "self.delete_confirmation_template or [",
+                        "lineNumber": 1458,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"admin/{}/{}/delete_confirmation.html\".format(app_label, opts.model_name),",
+                        "lineNumber": 1459,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"admin/{}/delete_confirmation.html\".format(app_label),",
+                        "lineNumber": 1460,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"admin/delete_confirmation.html\",",
+                        "lineNumber": 1461,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1464,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_inline_formsets(self, request, formsets, inline_instances, obj=None):",
+                        "lineNumber": 1466,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    inline_admin_formsets = []",
+                        "lineNumber": 1467,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    for inline, formset in zip(inline_instances, formsets):",
+                        "lineNumber": 1468,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        fieldsets = list(inline.get_fieldsets(request, obj))",
+                        "lineNumber": 1469,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        readonly = list(inline.get_readonly_fields(request, obj))",
+                        "lineNumber": 1470,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        has_add_permission = inline.has_add_permission(request, obj)",
+                        "lineNumber": 1471,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        has_change_permission = inline.has_change_permission(request, obj)",
+                        "lineNumber": 1472,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        has_delete_permission = inline.has_delete_permission(request, obj)",
+                        "lineNumber": 1473,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        has_view_permission = inline.has_view_permission(request, obj)",
+                        "lineNumber": 1474,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        prepopulated = dict(inline.get_prepopulated_fields(request, obj))",
+                        "lineNumber": 1475,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        inline_admin_formset = helpers.InlineAdminFormSet(",
+                        "lineNumber": 1476,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            inline, formset, fieldsets, prepopulated, readonly, model_admin=self,",
+                        "lineNumber": 1477,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return inline_admin_formsets",
+                        "lineNumber": 1482,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def get_changeform_initial_data(self, request):",
+                        "lineNumber": 1484,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1485,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Get the initial form data from the request's GET params.",
+                        "lineNumber": 1486,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1487,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    initial = dict(request.GET.items())",
+                        "lineNumber": 1488,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    for k in initial:",
+                        "lineNumber": 1489,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        try:",
+                        "lineNumber": 1490,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            f = self.model._meta.get_field(k)",
+                        "lineNumber": 1491,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        except FieldDoesNotExist:",
+                        "lineNumber": 1492,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            continue",
+                        "lineNumber": 1493,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # We have to special-case M2Ms as a list of comma-separated PKs.",
+                        "lineNumber": 1494,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if isinstance(f, models.ManyToManyField):",
+                        "lineNumber": 1495,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            initial[k] = initial[k].split(\",\")",
+                        "lineNumber": 1496,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return initial",
+                        "lineNumber": 1497,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _get_obj_does_not_exist_redirect(self, request, opts, object_id):",
+                        "lineNumber": 1499,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1500,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Create a message informing the user that the object doesn't exist",
+                        "lineNumber": 1501,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "\"\"\"",
+                        "lineNumber": 1503,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "msg = _('%(name)s with ID “%(key)s” doesn’t exist. Perhaps it was deleted?') % {",
+                        "lineNumber": 1504,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'name': opts.verbose_name,",
+                        "lineNumber": 1505,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'key': unquote(object_id),",
+                        "lineNumber": 1506,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "}",
+                        "lineNumber": 1507,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "@csrf_protect_m",
+                        "lineNumber": 1512,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def changeform_view(self, request, object_id=None, form_url='', extra_context=None):",
+                        "lineNumber": 1513,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    with transaction.atomic(using=router.db_for_write(self.model)):",
+                        "lineNumber": 1514,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self._changeform_view(request, object_id, form_url, extra_context)",
+                        "lineNumber": 1515,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _changeform_view(self, request, object_id, form_url, extra_context):",
+                        "lineNumber": 1517,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))",
+                        "lineNumber": 1518,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if to_field and not self.to_field_allowed(request, to_field):",
+                        "lineNumber": 1519,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise DisallowedModelAdminToField(\"The field %s cannot be referenced.\" % to_field)",
+                        "lineNumber": 1520,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    model = self.model",
+                        "lineNumber": 1522,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = model._meta",
+                        "lineNumber": 1523,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if request.method == 'POST' and '_saveasnew' in request.POST:",
+                        "lineNumber": 1525,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        object_id = None",
+                        "lineNumber": 1526,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1535,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    obj = self.get_object(request, unquote(object_id), to_field)",
+                        "lineNumber": 1536,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if not self.has_view_or_change_permission(request, obj):",
+                        "lineNumber": 1538,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise PermissionDenied",
+                        "lineNumber": 1539,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if obj is None:",
+                        "lineNumber": 1541,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self._get_obj_does_not_exist_redirect(request, opts, object_id)",
+                        "lineNumber": 1542,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "ModelForm = self.get_form(request, obj, change=not add)",
+                        "lineNumber": 1544,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if request.method == 'POST':",
+                        "lineNumber": 1545,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    form = ModelForm(request.POST, request.FILES, instance=obj)",
+                        "lineNumber": 1546,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    form_validated = form.is_valid()",
+                        "lineNumber": 1547,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if form_validated:",
+                        "lineNumber": 1548,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        new_object = self.save_form(request, form, change=not add)",
+                        "lineNumber": 1549,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1550,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        new_object = form.instance",
+                        "lineNumber": 1551,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    formsets, inline_instances = self._create_formsets(request, new_object, change=not add)",
+                        "lineNumber": 1552,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if all_valid(formsets) and form_validated:",
+                        "lineNumber": 1553,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.save_model(request, new_object, form, not add)",
+                        "lineNumber": 1554,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.save_related(request, form, formsets, not add)",
+                        "lineNumber": 1555,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        change_message = self.construct_change_message(request, form, formsets, add)",
+                        "lineNumber": 1556,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if add:",
+                        "lineNumber": 1557,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            self.log_addition(request, new_object, change_message)",
+                        "lineNumber": 1558,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            return self.response_add(request, new_object)",
+                        "lineNumber": 1559,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        else:",
+                        "lineNumber": 1560,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            self.log_change(request, new_object, change_message)",
+                        "lineNumber": 1561,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            return self.response_change(request, new_object)",
+                        "lineNumber": 1562,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1563,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        form_validated = False",
+                        "lineNumber": 1564,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1565,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if add:",
+                        "lineNumber": 1566,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        initial = self.get_changeform_initial_data(request)",
+                        "lineNumber": 1567,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        form = ModelForm(initial=initial)",
+                        "lineNumber": 1568,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        formsets, inline_instances = self._create_formsets(request, form.instance, change=False)",
+                        "lineNumber": 1569,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    else:",
+                        "lineNumber": 1570,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        form = ModelForm(instance=obj)",
+                        "lineNumber": 1571,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        formsets, inline_instances = self._create_formsets(request, obj, change=True)",
+                        "lineNumber": 1572,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if not add and not self.has_change_permission(request, obj):",
+                        "lineNumber": 1574,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    readonly_fields = flatten_fieldsets(self.get_fieldsets(request, obj))",
+                        "lineNumber": 1575,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1576,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    readonly_fields = self.get_readonly_fields(request, obj)",
+                        "lineNumber": 1577,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "adminForm = helpers.AdminForm(",
+                        "lineNumber": 1578,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    form,",
+                        "lineNumber": 1579,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    list(self.get_fieldsets(request, obj)),",
+                        "lineNumber": 1580,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # Clear prepopulated fields on a view-only form to avoid a crash.",
+                        "lineNumber": 1581,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    self.get_prepopulated_fields(request, obj) if add or self.has_change_permission(request, obj) else {},",
+                        "lineNumber": 1582,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    readonly_fields,",
+                        "lineNumber": 1583,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    model_admin=self)",
+                        "lineNumber": 1584,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "media = self.media + adminForm.media",
+                        "lineNumber": 1585,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "inline_formsets = self.get_inline_formsets(request, formsets, inline_instances, obj)",
+                        "lineNumber": 1587,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "for inline_formset in inline_formsets:",
+                        "lineNumber": 1588,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    media = media + inline_formset.media",
+                        "lineNumber": 1589,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if add:",
+                        "lineNumber": 1591,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    title = _('Add %s')",
+                        "lineNumber": 1592,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "elif self.has_change_permission(request, obj):",
+                        "lineNumber": 1593,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    title = _('Change %s')",
+                        "lineNumber": 1594,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "else:",
+                        "lineNumber": 1595,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "context = {",
+                        "lineNumber": 1597,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    **self.admin_site.each_context(request),",
+                        "lineNumber": 1598,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'title': title % opts.verbose_name,",
+                        "lineNumber": 1599,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'adminform': adminForm,",
+                        "lineNumber": 1600,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'object_id': object_id,",
+                        "lineNumber": 1601,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'original': obj,",
+                        "lineNumber": 1602,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'is_popup': IS_POPUP_VAR in request.POST or IS_POPUP_VAR in request.GET,",
+                        "lineNumber": 1603,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'to_field': to_field,",
+                        "lineNumber": 1604,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'media': media,",
+                        "lineNumber": 1605,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Hide the \"Save\" and \"Save and continue\" buttons if \"Save as New\" was",
+                        "lineNumber": 1611,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# previously chosen to prevent the interface from getting confusing.",
+                        "lineNumber": 1612,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if request.method == 'POST' and not form_validated and \"_saveasnew\" in request.POST:",
+                        "lineNumber": 1613,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    context['show_save'] = False",
+                        "lineNumber": 1614,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    context['show_save_and_continue'] = False",
+                        "lineNumber": 1615,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    context.update(extra_context or {})",
+                        "lineNumber": 1619,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self.render_change_form(request, context, add=add, change=not add, obj=obj, form_url=form_url)",
+                        "lineNumber": 1621,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def autocomplete_view(self, request):",
+                        "lineNumber": 1623,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return AutocompleteJsonView.as_view(model_admin=self)(request)",
+                        "lineNumber": 1624,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def add_view(self, request, form_url='', extra_context=None):",
+                        "lineNumber": 1626,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self.changeform_view(request, None, form_url, extra_context)",
+                        "lineNumber": 1627,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def change_view(self, request, object_id, form_url='', extra_context=None):",
+                        "lineNumber": 1629,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self.changeform_view(request, object_id, form_url, extra_context)",
+                        "lineNumber": 1630,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _get_edited_object_pks(self, request, prefix):",
+                        "lineNumber": 1632,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"Return POST data values of list_editable primary keys.\"\"\"",
+                        "lineNumber": 1633,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    pk_pattern = re.compile(r'{}-\\d+-{}$'.format(prefix, self.model._meta.pk.name))",
+                        "lineNumber": 1634,
+                        "lineChange": "removed"
+                      },
+                      {
+                        "line": "    pk_pattern = re.compile(",
+                        "lineNumber": 1634,
+                        "lineChange": "added"
+                      },
+                      {
+                        "line": "        r'{}-\\d+-{}$'.format(re.escape(prefix), self.model._meta.pk.name)",
+                        "lineNumber": 1635,
+                        "lineChange": "added"
+                      },
+                      {
+                        "line": "    )",
+                        "lineNumber": 1636,
+                        "lineChange": "added"
+                      },
+                      {
+                        "line": "    return [value for key, value in request.POST.items() if pk_pattern.match(key)]",
+                        "lineNumber": 1637,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _get_list_editable_queryset(self, request, prefix):",
+                        "lineNumber": 1639,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1640,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    Based on POST data, return a queryset of the objects that were edited",
+                        "lineNumber": 1641,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    via list_editable.",
+                        "lineNumber": 1642,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1643,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_pks = self._get_edited_object_pks(request, prefix)",
+                        "lineNumber": 1644,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    queryset = self.get_queryset(request)",
+                        "lineNumber": 1645,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    validate = queryset.model._meta.pk.to_python",
+                        "lineNumber": 1646,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    try:",
+                        "lineNumber": 1647,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        for pk in object_pks:",
+                        "lineNumber": 1648,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            validate(pk)",
+                        "lineNumber": 1649,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    except ValidationError:",
+                        "lineNumber": 1650,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        # Disable the optimization if the POST data was tampered with.",
+                        "lineNumber": 1651,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return queryset",
+                        "lineNumber": 1652,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return queryset.filter(pk__in=object_pks)",
+                        "lineNumber": 1653,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "@csrf_protect_m",
+                        "lineNumber": 1655,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def changelist_view(self, request, extra_context=None):",
+                        "lineNumber": 1656,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1657,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    The 'change list' admin view for this model.",
+                        "lineNumber": 1658,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"\"\"",
+                        "lineNumber": 1659,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    from django.contrib.admin.views.main import ERROR_FLAG",
+                        "lineNumber": 1660,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1661,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    app_label = opts.app_label",
+                        "lineNumber": 1662,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if not self.has_view_or_change_permission(request):",
+                        "lineNumber": 1663,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise PermissionDenied",
+                        "lineNumber": 1664,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # something is screwed up with the database, so display an error",
+                        "lineNumber": 1673,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # page.",
+                        "lineNumber": 1674,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if ERROR_FLAG in request.GET:",
+                        "lineNumber": 1675,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return SimpleTemplateResponse('admin/invalid_setup.html', {",
+                        "lineNumber": 1676,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            'title': _('Database error'),",
+                        "lineNumber": 1677,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        })",
+                        "lineNumber": 1678,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(request.path + '?' + ERROR_FLAG + '=1')",
+                        "lineNumber": 1679,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# If the request was POSTed, this might be a bulk action or a bulk",
+                        "lineNumber": 1681,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# below.",
+                        "lineNumber": 1684,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "action_failed = False",
+                        "lineNumber": 1685,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)",
+                        "lineNumber": 1686,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "actions = self.get_actions(request)",
+                        "lineNumber": 1688,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Actions with no confirmation",
+                        "lineNumber": 1689,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if (actions and request.method == 'POST' and",
+                        "lineNumber": 1690,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'index' in request.POST and '_save' not in request.POST):",
+                        "lineNumber": 1691,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if selected:",
+                        "lineNumber": 1692,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        response = self.response_action(request, queryset=cl.get_queryset(request))",
+                        "lineNumber": 1693,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Actions with confirmation",
+                        "lineNumber": 1704,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if (actions and request.method == 'POST' and",
+                        "lineNumber": 1705,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        helpers.ACTION_CHECKBOX_NAME in request.POST and",
+                        "lineNumber": 1706,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'index' not in request.POST and '_save' not in request.POST):",
+                        "lineNumber": 1707,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if selected:",
+                        "lineNumber": 1708,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        response = self.response_action(request, queryset=cl.get_queryset(request))",
+                        "lineNumber": 1709,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # form if the user refreshes the browser or uses the \"No, take",
+                        "lineNumber": 1717,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # me back\" button on the action confirmation page.",
+                        "lineNumber": 1718,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return HttpResponseRedirect(request.get_full_path())",
+                        "lineNumber": 1719,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# If we're allowing changelist editing, we need to construct a formset",
+                        "lineNumber": 1721,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Handle POSTed bulk-edit data.",
+                        "lineNumber": 1726,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if request.method == 'POST' and cl.list_editable and '_save' in request.POST:",
+                        "lineNumber": 1727,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if not self.has_change_permission(request):",
+                        "lineNumber": 1728,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise PermissionDenied",
+                        "lineNumber": 1729,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    FormSet = self.get_changelist_formset(request)",
+                        "lineNumber": 1730,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    modified_objects = self._get_list_editable_queryset(request, FormSet.get_default_prefix())",
+                        "lineNumber": 1731,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    formset = cl.formset = FormSet(request.POST, request.FILES, queryset=modified_objects)",
+                        "lineNumber": 1732,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if formset.is_valid():",
+                        "lineNumber": 1733,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        changecount = 0",
+                        "lineNumber": 1734,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        for form in formset.forms:",
+                        "lineNumber": 1735,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            if form.has_changed():",
+                        "lineNumber": 1736,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                obj = self.save_form(request, form, change=True)",
+                        "lineNumber": 1737,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                self.save_model(request, obj, form, change=True)",
+                        "lineNumber": 1738,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                self.save_related(request, form, formsets=[], change=True)",
+                        "lineNumber": 1739,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                change_msg = self.construct_change_message(request, form, None)",
+                        "lineNumber": 1740,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                self.log_change(request, obj, change_msg)",
+                        "lineNumber": 1741,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                changecount += 1",
+                        "lineNumber": 1742,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            ) % {",
+                        "lineNumber": 1749,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                'count': changecount,",
+                        "lineNumber": 1750,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "                'name': model_ngettext(opts, changecount),",
+                        "lineNumber": 1751,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            }",
+                        "lineNumber": 1752,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            self.message_user(request, msg, messages.SUCCESS)",
+                        "lineNumber": 1753,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return HttpResponseRedirect(request.get_full_path())",
+                        "lineNumber": 1755,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Handle GET -- construct a formset for display.",
+                        "lineNumber": 1757,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "context = {",
+                        "lineNumber": 1782,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    **self.admin_site.each_context(request),",
+                        "lineNumber": 1783,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'module_name': str(opts.verbose_name_plural),",
+                        "lineNumber": 1784,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'selection_note': _('0 of %(cnt)s selected') % {'cnt': len(cl.result_list)},",
+                        "lineNumber": 1785,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'selection_note_all': selection_note_all % {'total_count': cl.result_count},",
+                        "lineNumber": 1786,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "return TemplateResponse(request, self.change_list_template or [",
+                        "lineNumber": 1804,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/%s/%s/change_list.html' % (app_label, opts.model_name),",
+                        "lineNumber": 1805,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/%s/change_list.html' % app_label,",
+                        "lineNumber": 1806,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'admin/change_list.html'",
+                        "lineNumber": 1807,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "@csrf_protect_m",
+                        "lineNumber": 1817,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def delete_view(self, request, object_id, extra_context=None):",
+                        "lineNumber": 1818,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    with transaction.atomic(using=router.db_for_write(self.model)):",
+                        "lineNumber": 1819,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self._delete_view(request, object_id, extra_context)",
+                        "lineNumber": 1820,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _delete_view(self, request, object_id, extra_context):",
+                        "lineNumber": 1822,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"The 'delete' admin view for this model.\"",
+                        "lineNumber": 1823,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    opts = self.model._meta",
+                        "lineNumber": 1824,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    app_label = opts.app_label",
+                        "lineNumber": 1825,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    to_field = request.POST.get(TO_FIELD_VAR, request.GET.get(TO_FIELD_VAR))",
+                        "lineNumber": 1827,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if to_field and not self.to_field_allowed(request, to_field):",
+                        "lineNumber": 1828,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise DisallowedModelAdminToField(\"The field %s cannot be referenced.\" % to_field)",
+                        "lineNumber": 1829,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    obj = self.get_object(request, unquote(object_id), to_field)",
+                        "lineNumber": 1831,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if not self.has_delete_permission(request, obj):",
+                        "lineNumber": 1833,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        raise PermissionDenied",
+                        "lineNumber": 1834,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if obj is None:",
+                        "lineNumber": 1836,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self._get_obj_does_not_exist_redirect(request, opts, object_id)",
+                        "lineNumber": 1837,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # Populate deleted_objects, a data structure of all related objects that",
+                        "lineNumber": 1839,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    # will also be deleted.",
+                        "lineNumber": 1840,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    deleted_objects, model_count, perms_needed, protected = self.get_deleted_objects([obj], request)",
+                        "lineNumber": 1841,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if request.POST and not protected:  # The user has confirmed the deletion.",
+                        "lineNumber": 1843,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if perms_needed:",
+                        "lineNumber": 1844,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            raise PermissionDenied",
+                        "lineNumber": 1845,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        obj_display = str(obj)",
+                        "lineNumber": 1846,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        attr = str(to_field) if to_field else opts.pk.attname",
+                        "lineNumber": 1847,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        obj_id = obj.serializable_value(attr)",
+                        "lineNumber": 1848,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.log_deletion(request, obj, obj_display)",
+                        "lineNumber": 1849,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        self.delete_model(request, obj)",
+                        "lineNumber": 1850,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        return self.response_delete(request, obj_display, obj_id)",
+                        "lineNumber": 1852,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_name = str(opts.verbose_name)",
+                        "lineNumber": 1854,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    if perms_needed or protected:",
+                        "lineNumber": 1856,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'perms_lacking': perms_needed,",
+                        "lineNumber": 1868,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'protected': protected,",
+                        "lineNumber": 1869,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'opts': opts,",
+                        "lineNumber": 1870,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'app_label': app_label,",
+                        "lineNumber": 1871,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'preserved_filters': self.get_preserved_filters(request),",
+                        "lineNumber": 1872,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'is_popup': IS_POPUP_VAR in request.POST or IS_POPUP_VAR in request.GET,",
+                        "lineNumber": 1873,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'to_field': to_field,",
+                        "lineNumber": 1874,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "**(extra_context or {}),",
+                        "lineNumber": 1875,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "from django.contrib.admin.models import LogEntry",
+                        "lineNumber": 1882,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# First check if the user can see this history.",
+                        "lineNumber": 1883,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "model = self.model",
+                        "lineNumber": 1884,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "obj = self.get_object(request, unquote(object_id))",
+                        "lineNumber": 1885,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if obj is None:",
+                        "lineNumber": 1886,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return self._get_obj_does_not_exist_redirect(request, model._meta, object_id)",
+                        "lineNumber": 1887,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if not self.has_view_or_change_permission(request, obj):",
+                        "lineNumber": 1889,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Then get the history for this object.",
+                        "lineNumber": 1892,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "opts = model._meta",
+                        "lineNumber": 1893,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "app_label = opts.app_label",
+                        "lineNumber": 1894,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "action_list = LogEntry.objects.filter(",
+                        "lineNumber": 1895,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    object_id=unquote(object_id),",
+                        "lineNumber": 1896,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    content_type=get_content_type_for_model(model)",
+                        "lineNumber": 1897,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": ").select_related().order_by('action_time')",
+                        "lineNumber": 1898,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'title': _('Change history: %s') % obj,",
+                        "lineNumber": 1902,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'action_list': action_list,",
+                        "lineNumber": 1903,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'module_name': str(capfirst(opts.verbose_name_plural)),",
+                        "lineNumber": 1904,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'object': obj,",
+                        "lineNumber": 1905,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'opts': opts,",
+                        "lineNumber": 1906,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "'preserved_filters': self.get_preserved_filters(request),",
+                        "lineNumber": 1907,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "**(extra_context or {}),",
+                        "lineNumber": 1908,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    return TemplateResponse(request, self.object_history_template or [",
+                        "lineNumber": 1913,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/%s/%s/object_history.html\" % (app_label, opts.model_name),",
+                        "lineNumber": 1914,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/%s/object_history.html\" % app_label,",
+                        "lineNumber": 1915,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        \"admin/object_history.html\"",
+                        "lineNumber": 1916,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    ], context)",
+                        "lineNumber": 1917,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "def _create_formsets(self, request, obj, change):",
+                        "lineNumber": 1919,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    \"Helper function to generate formsets for add/change_view.\"",
+                        "lineNumber": 1920,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    formsets = []",
+                        "lineNumber": 1921,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "get_formsets_args = [request]",
+                        "lineNumber": 1924,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if change:",
+                        "lineNumber": 1925,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    get_formsets_args.append(obj)",
+                        "lineNumber": 1926,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "for FormSet, inline in self.get_formsets_with_inlines(*get_formsets_args):",
+                        "lineNumber": 1927,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    prefix = FormSet.get_default_prefix()",
+                        "lineNumber": 1928,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    prefix = \"%s-%s\" % (prefix, prefixes[prefix])",
+                        "lineNumber": 1931,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "formset_params = {",
+                        "lineNumber": 1932,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'instance': obj,",
+                        "lineNumber": 1933,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'prefix': prefix,",
+                        "lineNumber": 1934,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    'queryset': inline.get_queryset(request),",
+                        "lineNumber": 1935,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "}",
+                        "lineNumber": 1936,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if request.method == 'POST':",
+                        "lineNumber": 1937,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    formset_params.update({",
+                        "lineNumber": 1938,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'data': request.POST.copy(),",
+                        "lineNumber": 1939,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'files': request.FILES,",
+                        "lineNumber": 1940,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        'save_as_new': '_saveasnew' in request.POST",
+                        "lineNumber": 1941,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    })",
+                        "lineNumber": 1942,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "formset = FormSet(**formset_params)",
+                        "lineNumber": 1943,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# Bypass validation of each view-only inline form (since the form's",
+                        "lineNumber": 1952,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "# data won't be in request.POST), unless the form was deleted.",
+                        "lineNumber": 1953,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "if not inline.has_change_permission(request, obj if change else None):",
+                        "lineNumber": 1954,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "    for index, form in enumerate(formset.initial_forms):",
+                        "lineNumber": 1955,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        if user_deleted_form(request, obj, formset, index):",
+                        "lineNumber": 1956,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "            continue",
+                        "lineNumber": 1957,
+                        "lineChange": "none"
+                      },
+                      {
+                        "line": "        form._errors = {}",
+                        "lineNumber": 1958,
+                        "lineChange": "none"
+                      }
+                    ]
+                  }
+                ],
+                "exampleCommitDescriptions": [],
+                "precision": "very-high",
+                "repoDatasetSize": 74,
+                "cwe": [
+                  "CWE-400"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "python/reDOS",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Unsanitized user input from a command line argument flows into re.match, where it is used to build a regular expression. This may result in a Regular expression Denial of Service attack (reDOS).",
+            "markdown": "Unsanitized user input from {0} {1} into {2}, where it is used to build a regular expression. This may result in a Regular expression Denial of Service attack (reDOS).",
+            "arguments": [
+              "[a command line argument](0)",
+              "[flows](1),(2),(3),(4),(5),(6)",
+              "[re.match](7)"
+            ]
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "update_main_cpp_testcases_h.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 31,
+                  "endLine": 31,
+                  "startColumn": 52,
+                  "endColumn": 60
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "0": "0a7a161d25f0b4a4b15e83bbbc4755388ccfd19dc5f8bde67be264d3e1c06cc3",
+            "1": "26f1400e.540177e4.ac2451cd.098f4f7b.1d07cee4.ba14daf2.b7ba9be2.8794408a.a6b41d6e.9dc2f629.ac2451cd.098f4f7b.b9abe432.5395f82f.a2237efa.f46ed94e"
+          },
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "id": 0,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 258,
+                            "endLine": 258,
+                            "startColumn": 19,
+                            "endColumn": 27
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 1,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 258,
+                            "endLine": 258,
+                            "startColumn": 19,
+                            "endColumn": 27
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 2,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 258,
+                            "endLine": 258,
+                            "startColumn": 19,
+                            "endColumn": 31
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 3,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 30,
+                            "endLine": 30,
+                            "startColumn": 45,
+                            "endColumn": 58
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 4,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 31,
+                            "endLine": 31,
+                            "startColumn": 68,
+                            "endColumn": 81
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 5,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 31,
+                            "endLine": 31,
+                            "startColumn": 61,
+                            "endColumn": 81
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 6,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 31,
+                            "endLine": 31,
+                            "startColumn": 61,
+                            "endColumn": 87
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "location": {
+                        "id": 7,
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "update_main_cpp_testcases_h.py",
+                            "uriBaseId": "%SRCROOT%"
+                          },
+                          "region": {
+                            "startLine": 31,
+                            "endLine": 31,
+                            "startColumn": 52,
+                            "endColumn": 60
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "priorityScore": 570,
+            "priorityScoreFactors": [
+              {
+                "label": true,
+                "type": "hotFileSource"
+              },
+              {
+                "label": true,
+                "type": "fixExamples"
+              }
+            ],
+            "isAutofixable": false
+          }
+        }
+      ],
+      "properties": {
+        "coverage": [
+          {
+            "isSupported": true,
+            "lang": "Python",
+            "files": 1,
+            "type": "SUPPORTED"
+          }
+        ]
+      }
+    }
+  ]
+}
